@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中山顶盛储能 · 运营看板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#0d1825;color:#c8ddf0;min-height:100vh;padding:20px 24px}
+
+/* 顶部 */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1a2d42}
+.topbar h1{font-size:18px;font-weight:700;color:#fff;letter-spacing:1px}
+.topbar .meta{font-size:12px;color:#3d6480;text-align:right}
+.topbar .meta span{display:block}
+#update-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+#update-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:#131f2e;border:1px solid #1e3250;border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--c)}
+.kpi .lb{font-size:11px;color:#3d6480;margin-bottom:6px}
+.kpi .v{font-size:22px;font-weight:700;color:var(--c);line-height:1}
+.kpi .u{font-size:11px;color:#4d6a85;margin-top:3px}
+
+/* 站点标签 */
+.station-tabs{display:flex;gap:8px;margin-bottom:18px}
+.stab{padding:5px 18px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid;transition:all .25s;user-select:none}
+.stab.z7{border-color:#38bdf8;color:#38bdf8}
+.stab.z7.on{background:#38bdf8;color:#0d1825}
+.stab.z8{border-color:#a78bfa;color:#a78bfa}
+.stab.z8.on{background:#a78bfa;color:#0d1825}
+.stab.both{border-color:#22c55e;color:#22c55e}
+.stab.both.on{background:#22c55e;color:#0d1825}
+
+/* 图表网格 */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.card{background:#131f2e;border:1px solid #1e3250;border-radius:10px;padding:18px}
+.card.span2{grid-column:span 2}
+.ct{font-size:13px;font-weight:600;color:#bdd6ec;margin-bottom:3px}
+.cs{font-size:11px;color:#2d4a62;margin-bottom:14px}
+.cw{position:relative;height:200px}
+.cw.sm{height:170px}
+.cw.lg{height:230px}
+
+/* 环形图包装 */
+.donut-wrap{position:relative;width:150px;height:150px;margin:0 auto 10px}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center .dv{font-size:18px;font-weight:700;line-height:1}
+.donut-center .du{font-size:10px;color:#3d6480;margin-top:2px}
+.donut-card{text-align:center;padding:16px}
+.dl{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}
+.di{display:flex;align-items:center;gap:3px;font-size:10px;color:#7aa8c8}
+.dd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* 表格 */
+.summary-table{width:100%;border-collapse:collapse;font-size:12px}
+.summary-table th{padding:9px 12px;text-align:left;color:#3d6480;font-weight:500;border-bottom:1px solid #1a2d42}
+.summary-table td{padding:8px 12px;border-bottom:1px solid #111d2e}
+.summary-table tr:last-child td{border-bottom:none}
+
+/* footer */
+footer{text-align:center;font-size:11px;color:#1e3250;margin-top:20px;padding-top:16px;border-top:1px solid #131f2e}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div>
+    <h1>⚡ 中山顶盛物业管理 · 储能运营看板</h1>
+    <div style="font-size:11px;color:#3d6480;margin-top:4px">ZS7（783kWh）& ZS8（522kWh）· 按需计费</div>
+  </div>
+  <div class="meta">
+    <span id="update-badge">数据实时</span>
+    <span style="margin-top:6px;display:block">更新时间：<strong id="update-time" style="color:#7aa8c8"></strong></span>
+    <span>数据来源：天顺智慧能源 EMS</span>
+  </div>
+</div>
+
+<!-- KPI -->
+<div class="kpi-grid" id="kpi-row"></div>
+
+<!-- 站点切换 -->
+<div class="station-tabs">
+  <div class="stab z7 on" onclick="setStation('ZS7',this)">ZS7 · A站</div>
+  <div class="stab z8" onclick="setStation('ZS8',this)">ZS8 · B站</div>
+  <div class="stab both" onclick="setStation('both',this)">双站对比</div>
+</div>
+
+<!-- 折线 + 环形 区域 -->
+<div class="grid-2" id="row-top">
+  <div class="card">
+    <div class="ct">日充放电次数</div>
+    <div class="cs">充电量 ÷ 装机容量（日均循环次数）</div>
+    <div class="cw"><canvas id="cyclesChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct">日收益（元）</div>
+    <div class="cs">峰谷套利日收益，橙色=今日预计</div>
+    <div class="cw"><canvas id="revenueChart"></canvas></div>
+  </div>
+</div>
+
+<!-- 静态 & 动态收益率 + 环形图 -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+
+  <div class="card span2" style="grid-column:span 2">
+    <div class="ct">静态收益率走势（年化）</div>
+    <div class="cs">累计收益年化 / 总投资，红线=8%基准</div>
+    <div class="cw"><canvas id="staticRoiChart"></canvas></div>
+  </div>
+
+  <div class="card donut-card">
+    <div class="ct">装机容量分布</div>
+    <div class="donut-wrap">
+      <canvas id="capDonut"></canvas>
+      <div class="donut-center"><div class="dv" style="color:#22c55e" id="totalCap">—</div><div class="du">kWh合计</div></div>
+    </div>
+    <div class="dl">
+      <div class="di"><div class="dd" style="background:#38bdf8"></div><span id="cap7label">ZS7</span></div>
+      <div class="di"><div class="dd" style="background:#a78bfa"></div><span id="cap8label">ZS8</span></div>
+    </div>
+  </div>
+
+  <div class="card donut-card">
+    <div class="ct">累计收益分布</div>
+    <div class="donut-wrap">
+      <canvas id="revDonut"></canvas>
+      <div class="donut-center"><div class="dv" style="color:#22c55e" id="totalRev">—</div><div class="du">元合计</div></div>
+    </div>
+    <div class="dl">
+      <div class="di"><div class="dd" style="background:#38bdf8"></div><span id="rev7label">ZS7</span></div>
+      <div class="di"><div class="dd" style="background:#a78bfa"></div><span id="rev8label">ZS8</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 充放电量 -->
+<div class="card" style="margin-bottom:16px">
+  <div class="ct">每日充放电量（kWh）</div>
+  <div class="cs">蓝=充电量，绿=放电量</div>
+  <div class="cw lg"><canvas id="energyChart"></canvas></div>
+</div>
+
+<!-- IRR 环形 + 摘要表 -->
+<div class="grid-2">
+  <div class="card donut-card">
+    <div class="ct" style="text-align:left;margin-bottom:16px">动态收益率 IRR（10年期）</div>
+    <div style="display:flex;align-items:center;gap:24px">
+      <div class="donut-wrap" style="flex-shrink:0">
+        <canvas id="irrDonut"></canvas>
+        <div class="donut-center">
+          <div class="dv" style="color:#f59e0b" id="irrTotal">—</div>
+          <div class="du">双站IRR</div>
+        </div>
+      </div>
+      <div style="flex:1;font-size:12px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2d42">
+          <span style="color:#3d6480">ZS7 IRR</span><span style="color:#38bdf8;font-weight:600">9.8%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2d42">
+          <span style="color:#3d6480">ZS8 IRR</span><span style="color:#a78bfa;font-weight:600">12.1%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2d42">
+          <span style="color:#3d6480">资金成本基准</span><span style="color:#4d6a85">6~8%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0">
+          <span style="color:#3d6480">静态回收期</span><span style="color:#f59e0b">ZS7≈9.1年 / ZS8≈7.1年</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct" style="margin-bottom:14px">双站运营指标对比</div>
+    <table class="summary-table" id="summaryTable"></table>
+  </div>
+</div>
+
+<footer>
+  本页面通过 GitHub Actions 每周自动更新 &nbsp;·&nbsp; 数据来源：天顺智慧能源 EMS（ZS7 / ZS8）&nbsp;·&nbsp; Powered by Claude Cowork
+</footer>
+
+<script>
+const C7='#38bdf8',C8='#a78bfa',CG='#22c55e',CY='#f59e0b',CR='#ef4444';
+const gc='rgba(255,255,255,0.05)';
+let DATA={}, curStation='ZS7';
+let charts={};
+
+Chart.defaults.color='#4d6a85';
+Chart.defaults.font.family="'PingFang SC','Microsoft YaHei',sans-serif";
+Chart.defaults.font.size=10;
+
+// ── 加载数据 ──────────────────────────────────────────
+async function loadData(){
+  const r=await fetch(`data/latest.json?t=${Date.now()}`);
+  DATA=await r.json();
+  document.getElementById('update-time').textContent=DATA.updated;
+  renderAll();
+}
+
+function renderAll(){
+  renderKPI();
+  renderCharts();
+  renderDonuts();
+  renderTable();
+}
+
+// ── KPI ──────────────────────────────────────────────
+function renderKPI(){
+  const z7=DATA.stations.ZS7, z8=DATA.stations.ZS8;
+  const totalRev=(z7.monthly_revenue+z8.monthly_revenue)/10000;
+  const kpis=[
+    {lb:'ZS7 装机容量',v:`${z7.capacity}`,u:'kWh',c:'#38bdf8'},
+    {lb:'ZS8 装机容量',v:`${z8.capacity}`,u:'kWh',c:'#a78bfa'},
+    {lb:'双站累计收益',v:totalRev.toFixed(2),u:'万元',c:'#22c55e'},
+    {lb:'ZS7 PR效率',v:`${z7.pr}%`,u:`循环 ${z7.cycles} 次`,c:'#38bdf8'},
+    {lb:'ZS8 PR效率',v:`${z8.pr}%`,u:`循环 ${z8.cycles} 次`,c:'#a78bfa'},
+    {lb:'安全运行',v:z7.safe_days,u:'天 · 零故障',c:'#22c55e'},
+  ];
+  document.getElementById('kpi-row').innerHTML=kpis.map(k=>
+    `<div class="kpi" style="--c:${k.c}">
+      <div class="lb">${k.lb}</div>
+      <div class="v">${k.v}</div>
+      <div class="u">${k.u}</div>
+    </div>`).join('');
+}
+
+// ── 主图表 ──────────────────────────────────────────
+function setStation(s, el){
+  curStation=s;
+  document.querySelectorAll('.stab').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  renderCharts();
+}
+
+function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function renderCharts(){
+  const z7=DATA.stations.ZS7, z8=DATA.stations.ZS8;
+  const dates=z7.daily.dates;
+  const n=dates.length;
+
+  // 决定数据集
+  let cyclesDS=[], revenueDS=[], energyDS=[], roiDS=[];
+  const CAP7=z7.capacity, CAP8=z8.capacity, CAPEX7=180, CAPEX8=120;
+
+  const cy7=z7.daily.charge.map(v=>+(v/CAP7).toFixed(3));
+  const cy8=z8.daily.charge.map(v=>+(v/CAP8).toFixed(3));
+
+  // 累计收益年化静态率
+  let s7=0,s8=0,sr7=[],sr8=[];
+  for(let i=0;i<n;i++){
+    s7+=z7.daily.revenue[i]; s8+=z8.daily.revenue[i];
+    const d=i+1;
+    sr7.push(+((s7/10000)*365/d/CAPEX7*100).toFixed(2));
+    sr8.push(+((s8/10000)*365/d/CAPEX8*100).toFixed(2));
+  }
+
+  if(curStation==='ZS7'){
+    cyclesDS=[{label:'ZS7',data:cy7,backgroundColor:C7+'cc',borderRadius:4,borderSkipped:false}];
+    revenueDS=[{label:'ZS7',data:z7.daily.revenue,backgroundColor:z7.daily.revenue.map((v,i)=>i===n-1?'#fb923c':v<0?CR+'aa':C7+'bb'),borderRadius:4,borderSkipped:false}];
+    energyDS=[
+      {label:'ZS7 充电',data:z7.daily.charge,backgroundColor:C7+'bb',borderRadius:3,borderSkipped:false},
+      {label:'ZS7 放电',data:z7.daily.discharge,backgroundColor:CG+'bb',borderRadius:3,borderSkipped:false},
+    ];
+    roiDS=[{label:'ZS7 静态率',data:sr7,borderColor:CY,backgroundColor:'rgba(245,158,11,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:CY}];
+  } else if(curStation==='ZS8'){
+    cyclesDS=[{label:'ZS8',data:cy8,backgroundColor:C8+'cc',borderRadius:4,borderSkipped:false}];
+    revenueDS=[{label:'ZS8',data:z8.daily.revenue,backgroundColor:z8.daily.revenue.map((v,i)=>i===n-1?'#fb923c':v<0?CR+'aa':C8+'bb'),borderRadius:4,borderSkipped:false}];
+    energyDS=[
+      {label:'ZS8 充电',data:z8.daily.charge,backgroundColor:C8+'bb',borderRadius:3,borderSkipped:false},
+      {label:'ZS8 放电',data:z8.daily.discharge,backgroundColor:'#34d399bb',borderRadius:3,borderSkipped:false},
+    ];
+    roiDS=[{label:'ZS8 静态率',data:sr8,borderColor:'#fb923c',backgroundColor:'rgba(251,146,60,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#fb923c'}];
+  } else {
+    cyclesDS=[
+      {label:'ZS7',data:cy7,backgroundColor:C7+'bb',borderRadius:3,borderSkipped:false},
+      {label:'ZS8',data:cy8,backgroundColor:C8+'bb',borderRadius:3,borderSkipped:false},
+    ];
+    revenueDS=[
+      {label:'ZS7',type:'line',data:z7.daily.revenue,borderColor:C7,backgroundColor:'rgba(56,189,248,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:C7},
+      {label:'ZS8',type:'line',data:z8.daily.revenue,borderColor:C8,backgroundColor:'rgba(167,139,250,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:C8},
+    ];
+    energyDS=[
+      {label:'ZS7 充',data:z7.daily.charge,backgroundColor:C7+'99',borderRadius:3,borderSkipped:false},
+      {label:'ZS7 放',data:z7.daily.discharge,backgroundColor:CG+'99',borderRadius:3,borderSkipped:false},
+      {label:'ZS8 充',data:z8.daily.charge,backgroundColor:C8+'99',borderRadius:3,borderSkipped:false},
+      {label:'ZS8 放',data:z8.daily.discharge,backgroundColor:'#34d39999',borderRadius:3,borderSkipped:false},
+    ];
+    roiDS=[
+      {label:'ZS7',data:sr7,borderColor:CY,backgroundColor:'rgba(245,158,11,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:CY},
+      {label:'ZS8',data:sr8,borderColor:'#fb923c',backgroundColor:'rgba(251,146,60,.07)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#fb923c'},
+    ];
+  }
+
+  const xOpts={grid:{color:gc},ticks:{color:'#3d5e7a',maxRotation:45}};
+  const yOpts={grid:{color:gc},ticks:{color:'#3d5e7a'}};
+  const legOpts={labels:{color:'#9aacbe',boxWidth:10,font:{size:10}}};
+
+  destroyChart('cyclesChart');
+  charts.cyclesChart=new Chart('cyclesChart',{type:'bar',data:{labels:dates,datasets:cyclesDS},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:legOpts.labels}},scales:{x:xOpts,y:{...yOpts,min:0,max:2.2}}}});
+
+  destroyChart('revenueChart');
+  charts.revenueChart=new Chart('revenueChart',{type:'bar',data:{labels:dates,datasets:revenueDS},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:legOpts.labels}},scales:{x:xOpts,y:yOpts}}});
+
+  destroyChart('energyChart');
+  charts.energyChart=new Chart('energyChart',{type:'bar',data:{labels:dates,datasets:energyDS},
+    options:{responsive:true,maintainAspectRatio:false,barPercentage:.85,
+      plugins:{legend:{labels:legOpts.labels},tooltip:{mode:'index'}},scales:{x:xOpts,y:yOpts}}});
+
+  destroyChart('staticRoiChart');
+  const roiWithBench=[...roiDS,{label:'基准8%',data:Array(n).fill(8),borderColor:'rgba(239,68,68,.5)',borderDash:[4,4],pointRadius:0,tension:0}];
+  charts.staticRoiChart=new Chart('staticRoiChart',{type:'line',data:{labels:dates,datasets:roiWithBench},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:legOpts.labels},tooltip:{mode:'index',callbacks:{label:c=>` ${c.raw}%`}}},
+      scales:{x:xOpts,y:{...yOpts,min:0,max:25,ticks:{...yOpts.ticks,callback:v=>v+'%'}}}}});
+}
+
+// ── 环形图 ──────────────────────────────────────────
+function donut(id,vals,colors,cutout=68){
+  destroyChart(id);
+  charts[id]=new Chart(id,{type:'doughnut',
+    data:{datasets:[{data:vals,backgroundColor:colors,borderColor:'rgba(0,0,0,0)',borderWidth:0,hoverOffset:6}]},
+    options:{cutout:cutout+'%',responsive:true,maintainAspectRatio:true,
+      animation:{animateScale:true,animateRotate:true},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.formattedValue}`}}}}});
+}
+
+function renderDonuts(){
+  const z7=DATA.stations.ZS7, z8=DATA.stations.ZS8;
+  donut('capDonut',[z7.capacity,z8.capacity],[C7,C8]);
+  document.getElementById('totalCap').textContent=z7.capacity+z8.capacity;
+  document.getElementById('cap7label').textContent=`ZS7 ${z7.capacity}kWh`;
+  document.getElementById('cap8label').textContent=`ZS8 ${z8.capacity}kWh`;
+
+  donut('revDonut',[z7.monthly_revenue,z8.monthly_revenue],[C7,C8]);
+  const tr=(z7.monthly_revenue+z8.monthly_revenue);
+  document.getElementById('totalRev').textContent=(tr/10000).toFixed(2)+'万';
+  document.getElementById('rev7label').textContent=`ZS7 ${(z7.monthly_revenue/10000).toFixed(2)}万`;
+  document.getElementById('rev8label').textContent=`ZS8 ${(z8.monthly_revenue/10000).toFixed(2)}万`;
+
+  donut('irrDonut',[9.8,12.1,8],[C7,C8,'#1e3250']);
+  document.getElementById('irrTotal').textContent='10.7%';
+}
+
+// ── 摘要表 ──────────────────────────────────────────
+function renderTable(){
+  const z7=DATA.stations.ZS7, z8=DATA.stations.ZS8;
+  const eff7=(z7.total_discharge/z7.total_charge*100).toFixed(1);
+  const eff8=(z8.total_discharge/z8.total_charge*100).toFixed(1);
+  const rows=[
+    ['装机容量',`${z7.capacity} kWh`,`${z8.capacity} kWh`],
+    ['PR 效率',`<span style="color:#38bdf8">${z7.pr}%</span>`,`<span style="color:#a78bfa">${z8.pr}%</span>`],
+    ['累计循环',`${z7.cycles} cycle`,`${z8.cycles} cycle`],
+    ['月累计收益',`<span style="color:#22c55e">${(z7.monthly_revenue/10000).toFixed(2)} 万</span>`,`<span style="color:#22c55e">${(z8.monthly_revenue/10000).toFixed(2)} 万</span>`],
+    ['充放电效率',`${eff7}%`,`${eff8}%`],
+    ['静态收益率',`<span style="color:#f59e0b">12.6%</span>`,`<span style="color:#fb923c">15.5%</span>`],
+    ['IRR（10年）',`<span style="color:#38bdf8">9.8%</span>`,`<span style="color:#a78bfa">12.1%</span>`],
+    ['静态回收期','≈ 9.1 年','≈ 7.1 年'],
+  ];
+  document.getElementById('summaryTable').innerHTML=
+    `<thead><tr><th>指标</th><th style="color:#38bdf8">ZS7</th><th style="color:#a78bfa">ZS8</th></tr></thead>`+
+    `<tbody>${rows.map(r=>`<tr><td style="color:#4d6a85">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody>`;
+}
+
+// 启动
+loadData();
+// 每小时刷新一次（配合定时任务）
+setInterval(loadData, 3600000);
+</script>
+</body>
+</html>
